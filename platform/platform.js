@@ -18,9 +18,13 @@ const state = {
   versionKeyword: "",
   versionStatus: "全部状态",
   selectedFolderIndex: null,
+  selectedImageIndex: 0,
   selectedModelIndex: 0,
   selectedModelVersionIndex: 0,
   modelTestProcessed: false,
+  cropMode: false,
+  cropRect: null,
+  cropApplied: false,
   workflowFlows: [
     { id: 1, type: "instance", name: "图像获取实例", input: "客户端上传" },
     { id: 2, type: "process", name: "X光图像处理", method: "手动绘制检测区域", prev: 1 },
@@ -81,6 +85,16 @@ function selectedScheme() {
 
 function selectedFolder() {
   return imageFolders[state.selectedFolderIndex] || imageFolders[0];
+}
+
+function folderFiles(folder = selectedFolder()) {
+  return Array.from({ length: Math.min(folder.count, 10) }, (_, index) => ({
+    name: `20260702_101${index + 5}15843_1${index % 2 ? "" : " - 副本"}.jpg`,
+    size: "3072 × 2048",
+    device: "MV-CS060-10GM",
+    tag: index % 3 === 0 ? "缺陷" : "",
+    update: `2026-07-02 10:${String(15 + index).padStart(2, "0")}:51`
+  }));
 }
 
 function visibleSchemes() {
@@ -316,11 +330,11 @@ function flowOptions(type) {
 function workflowFlowCard(flow) {
   if (flow.type === "instance") return `
     <section class="workflow-section active-flow" data-flow-id="${flow.id}">
+      <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
       <div class="flow-basic">
         <label>流程名称<input class="matrix-input" value="${flow.name}" /></label>
         <label>实例名称<input class="matrix-input" value="X光检测" /></label>
         <label>实例采集方式<select class="matrix-input"><option>${flow.input}</option><option>图像库选择</option><option>接口</option><option>相机</option></select></label>
-        <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
       </div>
     </section>
   `;
@@ -334,9 +348,9 @@ function processFlowCard(flow) {
   const hasInstancePrev = state.workflowFlows.some(item => item.type === "instance");
   return `
     <section class="workflow-card active-flow ${isManual ? "manual" : "model"}" data-flow-id="${flow.id}">
+      <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
       <div class="workflow-form-grid">
         <label>处理流程名称<input class="matrix-input" value="${flow.name}" /></label>
-        <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
         <label>前置流程<select class="matrix-input">${flowOptions("instance")}</select></label>
         ${hasInstancePrev ? `<label>选择图像实例<select class="matrix-input"><option>X光检测</option><option>客户端上传实例</option></select></label>` : ""}
         ${isManual ? `<div class="score-buttons"><button>4等分</button><button>6等分</button><button>8等分</button></div>` : ""}
@@ -351,9 +365,9 @@ function processFlowCard(flow) {
 function detectFlowCard(flow) {
   return `
     <section class="workflow-card compact active-flow" data-flow-id="${flow.id}">
+      <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
       <div class="workflow-form-grid">
         <label>检测项名称<input class="matrix-input" value="${flow.name}" /></label>
-        <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
         <label>前置流程<select class="matrix-input">${flowOptions("process")}</select></label>
         <label class="target-tabs">选择检测对象<span><button>对象A</button><button>对象B</button></span></label>
         <label>模型<input class="matrix-input" placeholder="请选择模型" /></label>
@@ -366,9 +380,9 @@ function detectFlowCard(flow) {
 function judgeFlowCard(flow) {
   return `
     <section class="workflow-card active-flow judge-flow" data-flow-id="${flow.id}">
+      <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
       <div class="workflow-form-grid">
         <label>判断流程名称<input class="matrix-input" value="${flow.name}" /></label>
-        <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
         <label>前置流程<select class="matrix-input">${flowOptions("detect")}</select></label>
         <label class="target-tabs">检测项<span><button>检测项A</button><button>检测项B</button></span></label>
       </div>
@@ -458,13 +472,7 @@ function imageTable() {
 
 function imageFolderDetail() {
   const folder = selectedFolder();
-  const files = Array.from({ length: Math.min(folder.count, 10) }, (_, index) => ({
-    name: `20260702_101${index + 5}15843_1${index % 2 ? "" : " - 副本"}.jpg`,
-    size: "3072 × 2048",
-    device: "MV-CS060-10GM",
-    tag: index % 3 === 0 ? "缺陷" : "",
-    update: `2026-07-02 10:${String(15 + index).padStart(2, "0")}:51`
-  }));
+  const files = folderFiles(folder);
 
   return pageFrame(folder.name, `首页 / 图像库 / ${folder.name}`, `
     <div class="folder-detail-head">
@@ -485,9 +493,9 @@ function imageFolderDetail() {
       <table class="matrix-table image-file-table">
         <thead><tr><th>名称</th><th>图像尺寸</th><th>采集时间</th><th>采集设备</th><th>标签</th><th>操作</th></tr></thead>
         <tbody>
-          ${files.map(file => `
+          ${files.map((file, index) => `
             <tr>
-              <td><span class="thumb-mini"></span><button class="link-btn strong">${file.name}</button></td>
+              <td><span class="thumb-mini"></span><button class="link-btn strong" data-action="viewImageDetail" data-index="${index}">${file.name}</button></td>
               <td>${file.size}</td>
               <td>${file.update}</td>
               <td>${file.device}</td>
@@ -642,6 +650,7 @@ function modal() {
     upload: "上传图片",
     uploadProcess: "图像列表",
     crop: "ROI 裁图",
+    imageDetail: "图片详情",
     model: "新建模型",
     modelSource: "选择训练图像源"
   };
@@ -651,6 +660,9 @@ function modal() {
 
   let confirmAction = "";
   let confirmText = "确认";
+  const files = folderFiles();
+  const imageDetail = files[state.selectedImageIndex] || files[0];
+  const cropStyle = state.cropRect ? `left:${state.cropRect.x}%;top:${state.cropRect.y}%;width:${state.cropRect.w}%;height:${state.cropRect.h}%;` : "";
   let body = state.modal === "flowType" ? `
     <div class="flow-type-grid">
       <button data-action="addFlow" data-type="instance">新增实例流程<span>无前置流程，作为工作流输入</span></button>
@@ -678,15 +690,20 @@ function modal() {
     <div class="upload-process-modal">
       <aside>
         <strong>图像列表</strong>
-        <table class="matrix-table"><thead><tr><th></th><th>图片名称</th><th>操作</th></tr></thead><tbody><tr><td><input type="checkbox" /></td><td>00000.jpg</td><td><button class="link-btn danger">删除</button></td></tr><tr><td><input type="checkbox" /></td><td>00001.jpg</td><td><button class="link-btn danger">删除</button></td></tr><tr><td><input type="checkbox" /></td><td>00002.jpg</td><td><button class="link-btn danger">删除</button></td></tr></tbody></table>
-        <button class="link-btn strong" data-modal="crop">批量处理</button>
+        <table class="matrix-table"><thead><tr><th></th><th>图片名称</th><th>状态</th><th>操作</th></tr></thead><tbody><tr><td><input type="checkbox" checked /></td><td>00000.jpg</td><td>${state.cropApplied ? '<span class="crop-result-badge">已裁图</span>' : '-'}</td><td><button class="link-btn danger">删除</button></td></tr><tr><td><input type="checkbox" checked /></td><td>00001.jpg</td><td>${state.cropApplied ? '<span class="crop-result-badge">已裁图</span>' : '-'}</td><td><button class="link-btn danger">删除</button></td></tr><tr><td><input type="checkbox" checked /></td><td>00002.jpg</td><td>${state.cropApplied ? '<span class="crop-result-badge">已裁图</span>' : '-'}</td><td><button class="link-btn danger">删除</button></td></tr></tbody></table>
+        <button class="matrix-btn" data-action="toggleCropMode">${state.cropMode ? "退出裁图" : "裁图"}</button>
+        <button class="matrix-btn" data-action="applyCropToAll" ${state.cropRect ? "" : "disabled"}>同步至全部图片</button>
+        <button class="matrix-btn" data-action="clearCrop">重置裁图</button>
       </aside>
       <main>
-        <div class="upload-preview-tools"><button>✂</button><button>▣</button><button>☑</button></div>
+        <div class="upload-preview-tools"><button data-action="toggleCropMode">✂</button><button data-action="clearCrop">▣</button><button data-action="applyCropToAll">☑</button></div>
         <div class="image-stage upload-preview-stage">
           <div class="image-placeholder">
             <div class="mountain"></div>
             <div class="sun"></div>
+          </div>
+          <div id="crop-overlay" class="crop-overlay ${state.cropMode ? "active" : ""}">
+            ${state.cropRect ? `<div id="crop-selection" class="crop-selection" style="${cropStyle}"></div>` : ""}
           </div>
           <span>此处显示左侧列表选中图片</span>
         </div>
@@ -695,6 +712,23 @@ function modal() {
           <button class="matrix-btn primary" data-action="confirmUploadProcess">确定添加</button>
         </div>
       </main>
+    </div>
+  ` : state.modal === "imageDetail" ? `
+    <div class="image-detail-body">
+      <div class="image-stage">
+        <div class="image-placeholder">
+          <div class="mountain"></div>
+          <div class="sun"></div>
+        </div>
+      </div>
+      <aside class="image-detail-info">
+        <h3>${imageDetail?.name || "图片"}</h3>
+        <p><span>图片尺寸</span><strong>${imageDetail?.size || "-"}</strong></p>
+        <p><span>采集时间</span><strong>${imageDetail?.update || "-"}</strong></p>
+        <p><span>采集设备</span><strong>${imageDetail?.device || "-"}</strong></p>
+        <p><span>标签</span><strong>${imageDetail?.tag || "未标注"}</strong></p>
+        <p><span>所在文件夹</span><strong>${selectedFolder().name}</strong></p>
+      </aside>
     </div>
   ` : state.modal === "folderEdit" ? `
     <label>文件夹名称<input class="matrix-input" value="${selectedFolder().name}" /></label>
@@ -706,6 +740,11 @@ function modal() {
     <label>保存到<input class="matrix-input" value="ROI裁图_初筛训练集" /></label>
     <label class="check-line"><input type="checkbox" /> 保存至图像库</label>
     <p class="modal-note">可关联已完成模型的标签类别或处理结果图片，导入后作为当前模型训练数据。</p>
+  ` : state.modal === "model" ? `
+    <label>模型名称<input id="modelName" class="matrix-input" value="马斯特新建检测模型" /></label>
+    <label>场景类型<select id="modelScene" class="matrix-input"><option>缺陷检测</option><option>分类</option><option>尺寸检测</option></select></label>
+    <label>训练图像源<input id="modelSourceInput" class="matrix-input" value="ROI裁图_初筛训练集" /></label>
+    <label>描述<textarea id="modelDesc" class="matrix-input" rows="4">用于马斯特场景的新建模型。</textarea></label>
   ` : state.modal === "schemeCreate" ? `
     <label>方案名称<input class="matrix-input" value="马斯特新检测方案" /></label>
     <label>方案描述<textarea class="matrix-input" rows="4">用于马斯特场景的新增检测方案，可继续进入详情配置版本。</textarea></label>
@@ -740,6 +779,7 @@ function modal() {
   if (state.modal === "versionEdit") confirmAction = "confirmEditVersion";
   if (state.modal === "folder") confirmAction = "confirmCreateFolder";
   if (state.modal === "folderEdit") confirmAction = "confirmEditFolder";
+  if (state.modal === "model") confirmAction = "confirmCreateModel";
   if (state.modal === "upload") confirmAction = "confirmUploadSelect";
   if (state.modal === "uploadProcess") confirmAction = "confirmUploadProcess";
   if (state.modal === "deleteScheme" || state.modal === "deleteVersion") {
@@ -871,17 +911,32 @@ function handleAction(action, el) {
     toast("文件夹已修改");
     return;
   }
+  if (action === "confirmCreateModel") {
+    const name = document.querySelector("#modelName")?.value.trim() || "马斯特新建检测模型";
+    const scene = document.querySelector("#modelScene")?.value || "缺陷检测";
+    const source = document.querySelector("#modelSourceInput")?.value.trim() || "ROI裁图_初筛训练集";
+    models.unshift({ name, scene, source, status: "待训练", score: "-" });
+    state.selectedModelIndex = 0;
+    state.modal = "";
+    render();
+    toast("新建模型成功");
+    return;
+  }
   if (action === "confirmUploadSelect") {
+    state.cropMode = false;
+    state.cropRect = null;
+    state.cropApplied = false;
     state.modal = "uploadProcess";
     render();
     return;
   }
   if (action === "confirmUploadProcess") {
     selectedFolder().count += 3;
+    if (state.cropApplied) selectedFolder().type = "ROI裁图";
     selectedFolder().update = nowText();
     state.modal = "";
     render();
-    toast("图片已添加，ROI 裁图入口已保留在本次上传处理弹窗中");
+    toast(state.cropApplied ? "图片已按裁图结果添加" : "图片已添加");
     return;
   }
   if (action === "confirmUploadImages") {
@@ -892,9 +947,46 @@ function handleAction(action, el) {
     toast("图片已上传至当前文件夹");
     return;
   }
+  if (action === "viewImageDetail") {
+    state.selectedImageIndex = Number.isNaN(index) ? 0 : index;
+    state.modal = "imageDetail";
+    render();
+    return;
+  }
+  if (action === "toggleCropMode") {
+    state.cropMode = !state.cropMode;
+    render();
+    toast(state.cropMode ? "请在图片区域拖拽框选裁图范围" : "已退出裁图模式");
+    return;
+  }
+  if (action === "applyCropToAll") {
+    if (!state.cropRect) {
+      toast("请先拖拽框选裁图范围");
+      return;
+    }
+    state.cropApplied = true;
+    state.cropMode = false;
+    render();
+    toast("裁图范围已同步至当前上传列表全部图片");
+    return;
+  }
+  if (action === "clearCrop") {
+    state.cropRect = null;
+    state.cropApplied = false;
+    state.cropMode = false;
+    render();
+    toast("裁图已重置");
+    return;
+  }
   if (action === "addFlow") {
     const type = el.dataset.type;
     const names = { instance: "图像获取实例", process: "处理流程", detect: "检测流程", judge: "规则判断流程" };
+    const requiredPrev = { process: "instance", detect: "process", judge: "detect" }[type];
+    if (requiredPrev && !state.workflowFlows.some(flow => flow.type === requiredPrev)) {
+      const prevNames = { instance: "图像获取实例", process: "处理流程", detect: "检测流程" };
+      toast(`请先新增${prevNames[requiredPrev]}`);
+      return;
+    }
     const nextId = Math.max(0, ...state.workflowFlows.map(flow => flow.id)) + 1;
     state.workflowFlows.push({
       id: nextId,
@@ -909,6 +1001,12 @@ function handleAction(action, el) {
     return;
   }
   if (action === "deleteFlow") {
+    const target = state.workflowFlows.find(flow => flow.id === index);
+    const dependMap = { instance: "process", process: "detect", detect: "judge" };
+    if (target && state.workflowFlows.some(flow => flow.type === dependMap[target.type])) {
+      toast("该流程存在下游流程，请先删除下游流程");
+      return;
+    }
     state.workflowFlows = state.workflowFlows.filter(flow => flow.id !== index);
     render();
     toast("流程已删除");
@@ -964,6 +1062,10 @@ function handleAction(action, el) {
     return;
   }
   if (action === "publishCurrentVersion") {
+    if (!state.workflowFlows.some(flow => flow.type === "instance") || !state.workflowFlows.some(flow => flow.type === "process") || !state.workflowFlows.some(flow => flow.type === "detect") || !state.workflowFlows.some(flow => flow.type === "judge")) {
+      toast("工作流不完整，请补齐实例、处理、检测和规则流程");
+      return;
+    }
     const version = versions[state.selectedVersionIndex] || versions[0];
     version.status = "已发布";
     version.update = nowText();
@@ -1116,6 +1218,12 @@ function handleAction(action, el) {
     return;
   }
   if (action === "confirmPublish") {
+    if (!state.workflowFlows.some(flow => flow.type === "instance") || !state.workflowFlows.some(flow => flow.type === "process") || !state.workflowFlows.some(flow => flow.type === "detect") || !state.workflowFlows.some(flow => flow.type === "judge")) {
+      state.modal = "";
+      render();
+      toast("工作流不完整，请补齐实例、处理、检测和规则流程");
+      return;
+    }
     const version = versions[state.selectedVersionIndex] || versions[0];
     version.status = "已发布";
     version.update = nowText();
@@ -1157,10 +1265,64 @@ function toast(message) {
   setTimeout(() => el.classList.remove("show"), 1600);
 }
 
+function initCropInteraction() {
+  const overlay = document.querySelector("#crop-overlay");
+  if (!overlay || !state.cropMode) return;
+  let drawing = false;
+  let start = null;
+
+  const toPercent = event => {
+    const rect = overlay.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
+      y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100))
+    };
+  };
+
+  overlay.addEventListener("mousedown", event => {
+    drawing = true;
+    start = toPercent(event);
+    state.cropRect = { x: start.x, y: start.y, w: 0, h: 0 };
+    if (!document.querySelector("#crop-selection")) {
+      const selection = document.createElement("div");
+      selection.id = "crop-selection";
+      selection.className = "crop-selection";
+      overlay.appendChild(selection);
+    }
+  }, { once: true });
+
+  overlay.addEventListener("mousemove", event => {
+    if (!drawing || !start) return;
+    const point = toPercent(event);
+    state.cropRect = {
+      x: Math.min(start.x, point.x),
+      y: Math.min(start.y, point.y),
+      w: Math.abs(point.x - start.x),
+      h: Math.abs(point.y - start.y)
+    };
+    const selection = document.querySelector("#crop-selection");
+    if (selection) {
+      selection.style.left = `${state.cropRect.x}%`;
+      selection.style.top = `${state.cropRect.y}%`;
+      selection.style.width = `${state.cropRect.w}%`;
+      selection.style.height = `${state.cropRect.h}%`;
+    }
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (!drawing) return;
+    drawing = false;
+    state.cropApplied = false;
+    if (!state.cropRect || state.cropRect.w < 2 || state.cropRect.h < 2) state.cropRect = null;
+    render();
+  }, { once: true });
+}
+
 function render() {
   renderShell();
   view.innerHTML = views[state.page]() + modal();
   bind();
+  initCropInteraction();
 }
 
 render();
