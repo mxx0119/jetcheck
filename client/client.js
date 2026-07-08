@@ -47,6 +47,7 @@ const state = {
   planVersion: "MST-XRAY 视觉检测方案 V1.4.2",
   planKeyword: "",
   currentMode: "detect",
+  draftToolName: "马斯特来料 X 光图片检测",
   schemes: [
     { name: "MST-XRAY 视觉检测方案", desc: "供应商 X 光图片上传检测，包含 ROI 裁图、X光初筛、规则判定", version: "MST-XRAY-20260703", source: "云端同步", time: "2026-07-05 19:30" },
     { name: "MST-HEAT 加热复核方案", desc: "加热复核检测方案，关联初筛输出图像", version: "MST-HEAT-20260702", source: "本地上传", time: "2026-07-04 10:22" }
@@ -259,7 +260,7 @@ function fileRunPage(tool) {
           <div class="file-upload-actions"><button class="btn primary" id="uploadImages">⇧ 上传图像</button><button class="btn">清空</button></div>
           <table>
             <thead><tr><th>状态</th><th>图片名称</th><th>操作</th></tr></thead>
-            <tbody><tr><td><span>待检测</span></td><td>img000000.jpg</td><td><button class="trash-btn">▥</button></td></tr><tr><td><span>待检测</span></td><td>img000001.jpg</td><td><button class="trash-btn">▥</button></td></tr></tbody>
+            <tbody><tr><td><span>${state.detected ? "NG" : "待检测"}</span></td><td>img000000.jpg</td><td><button class="trash-btn">▥</button></td></tr><tr><td><span>${state.detected ? "OK" : "待检测"}</span></td><td>img000001.jpg</td><td><button class="trash-btn">▥</button></td></tr></tbody>
           </table>
           <button class="start-detect-btn" id="startDetect">开始检测</button>
         </aside>
@@ -272,9 +273,9 @@ function fileRunPage(tool) {
         <aside class="file-result-panel">
           <div class="file-result-card">
             <h2>检测结果</h2>
-            <strong>OK/NG<br>/检测异常</strong>
-            <p>检测节拍： <b>0.5s</b></p>
-            <div>OK项：　N个<br>NG项：　N个</div>
+            <strong>${state.detected ? "NG" : "OK/NG<br>/检测异常"}</strong>
+            <p>检测节拍： <b>${state.detected ? "0.5s" : "-"}</b></p>
+            <div>OK项：　${state.detected ? "1" : "N"}个<br>NG项：　${state.detected ? "1" : "N"}个</div>
           </div>
           <div class="file-result-card label-card">
             <h2>标签信息</h2>
@@ -316,8 +317,8 @@ function liveRunPage(tool) {
           <div class="live-panel status-panel">
             <h2>运行概况</h2>
             <div class="run-buttons"><button class="outline-blue" id="startDetect">↻ ${state.currentMode === "capture" ? "采图" : "开始"}</button><button class="outline-blue disabled">↻ 重置</button></div>
-            <strong class="waiting-text">等待开始</strong>
-            <div class="beat-box"><span>本次节拍</span><b>-</b></div>
+            <strong class="waiting-text">${state.detected ? "运行完成" : "等待开始"}</strong>
+            <div class="beat-box"><span>本次节拍</span><b>${state.detected ? "0.5s" : "-"}</b></div>
           </div>
           <div class="live-panel label-panel">
             <h2>标签信息 <em>已添加0/3</em></h2>
@@ -557,8 +558,8 @@ function planModal() {
         <div class="wire-modal mast-modal">
           <button class="modal-close" data-close>×</button>
           <h2>新建检测工具</h2>
-          <label>检测工具名称<input class="input" value="马斯特来料 X 光图片检测" /></label>
-          <label>选择方案<select class="input"><option>MST-XRAY 视觉检测方案 V1.4.2</option><option>MST-HEAT 加热复核方案 V1.2.0</option></select></label>
+          <label>检测工具名称<input id="newToolName" class="input" value="${state.draftToolName}" /></label>
+          <label>选择方案<select id="newToolPlan" class="input"><option>MST-XRAY 视觉检测方案 V1.4.2</option><option>MST-HEAT 加热复核方案 V1.2.0</option></select></label>
           <p class="modal-note">导入方案后自动填充图像处理和检测工作流；图片来源为上传图片/图片集时，无需补充相机配置。</p>
           <div class="actions"><button class="btn" data-close>取消</button><button class="btn primary" id="confirmTool">确认</button></div>
         </div>
@@ -600,6 +601,7 @@ const views = { center, detect, toolEdit, records, detail, plans, models, camera
 
 function openTool(index) {
   state.selectedTool = index;
+  state.detected = false;
   if (state.imageSourceType === "file" && state.currentMode === "capture") state.currentMode = "process";
   state.modal = "launch";
   render();
@@ -768,6 +770,9 @@ function bind() {
 
   const saveToolEdit = document.querySelector("#saveToolEdit");
   if (saveToolEdit) saveToolEdit.addEventListener("click", () => {
+    const current = tools[state.selectedTool];
+    const sourceName = document.querySelector(".source-modal input.config-input")?.value.trim();
+    if (current && state.modal === "editSource" && sourceName) current.name = sourceName;
     state.modal = null;
     toast("检测工具配置已保存");
     render();
@@ -778,6 +783,8 @@ function bind() {
 
   const deleteTool = document.querySelector("#deleteTool");
   if (deleteTool) deleteTool.addEventListener("click", () => {
+    if (tools[state.selectedTool]) tools.splice(state.selectedTool, 1);
+    state.selectedTool = Math.max(0, Math.min(state.selectedTool, tools.length - 1));
     state.page = "center";
     toast("检测工具已删除");
     render();
@@ -843,6 +850,7 @@ function bind() {
 
   const confirmProcessStep = document.querySelector("#confirmProcessStep");
   if (confirmProcessStep) confirmProcessStep.addEventListener("click", () => {
+    if (state.modalMode === "add") state.processMethod = state.processMethod || "全图处理";
     state.modal = null;
     toast("处理步骤已创建");
     render();
@@ -900,6 +908,10 @@ function bind() {
 
   const confirmTool = document.querySelector("#confirmTool");
   if (confirmTool) confirmTool.addEventListener("click", () => {
+    const name = document.querySelector("#newToolName")?.value.trim() || "马斯特来料 X 光图片检测";
+    tools.unshift({ name, status: "idle", tone: "blue" });
+    state.selectedTool = 0;
+    state.draftToolName = name;
     state.modal = null;
     toast("检测工具已创建");
     render();
