@@ -327,6 +327,18 @@ function flowOptions(type) {
   return list.map(flow => `<option>${flow.name}</option>`).join("") || `<option>暂无可选前置流程</option>`;
 }
 
+function workflowRegionStrip() {
+  return `
+    <div class="workflow-region-strip">
+      <label><input type="radio" checked />关联</label>
+      <label><input type="checkbox" />全选</label>
+      <label><input type="checkbox" />区域A</label>
+      <label><input type="checkbox" />区域B</label>
+      <label><input type="checkbox" />区域C</label>
+    </div>
+  `;
+}
+
 function workflowFlowCard(flow) {
   if (flow.type === "instance") return `
     <section class="workflow-section active-flow" data-flow-id="${flow.id}">
@@ -353,6 +365,7 @@ function processFlowCard(flow) {
         <label>处理流程名称<input class="matrix-input" value="${flow.name}" /></label>
         <label>前置流程<select class="matrix-input">${flowOptions("instance")}</select></label>
         ${hasInstancePrev ? `<label>选择图像实例<select class="matrix-input"><option>X光检测</option><option>客户端上传实例</option></select></label>` : ""}
+        ${workflowRegionStrip()}
         ${isManual ? `<div class="score-buttons"><button>4等分</button><button>6等分</button><button>8等分</button></div>` : ""}
         <label>处理方式<select class="matrix-input" data-action="toggleProcessMethod" data-index="${flow.id}"><option>${flow.method}</option><option>${isManual ? "模型识别检测区域" : "手动绘制检测区域"}</option></select></label>
         ${!isManual ? `<label>模型<input class="matrix-input" placeholder="请选择模型" /></label><button class="matrix-btn model-pick">选择模型</button>` : ""}
@@ -369,6 +382,7 @@ function detectFlowCard(flow) {
       <div class="workflow-form-grid">
         <label>检测项名称<input class="matrix-input" value="${flow.name}" /></label>
         <label>前置流程<select class="matrix-input">${flowOptions("process")}</select></label>
+        ${workflowRegionStrip()}
         <label class="target-tabs">选择检测对象<span><button>对象A</button><button>对象B</button></span></label>
         <label>模型<input class="matrix-input" placeholder="请选择模型" /></label>
         <button class="matrix-btn model-pick">选择模型</button>
@@ -384,6 +398,7 @@ function judgeFlowCard(flow) {
       <div class="workflow-form-grid">
         <label>判断流程名称<input class="matrix-input" value="${flow.name}" /></label>
         <label>前置流程<select class="matrix-input">${flowOptions("detect")}</select></label>
+        ${workflowRegionStrip()}
         <label class="target-tabs">检测项<span><button>检测项A</button><button>检测项B</button></span></label>
       </div>
 

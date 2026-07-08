@@ -3707,7 +3707,9 @@ textarea.matrix-input {
 }
 
 .workflow-detail {
-  padding: 16px 86px 36px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 16px 42px 36px;
   background: #fff;
 }
 
@@ -3762,23 +3764,26 @@ textarea.matrix-input {
 .workflow-summary,
 .workflow-section,
 .workflow-card {
-  border: 1px solid #b7bdc7;
+  border: 1px solid #9da3ad;
+  border-radius: 0;
+  box-shadow: none;
   background: #fff;
 }
 
 .workflow-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 160px;
-  gap: 18px;
-  min-height: 88px;
-  padding: 16px 28px;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 16px;
+  min-height: 96px;
+  padding: 18px 38px;
 }
 
 .summary-fields {
   display: grid;
-  grid-template-columns: 90px minmax(180px, 1fr) 90px minmax(180px, 1fr);
+  grid-template-columns: 92px minmax(180px, 1fr) 92px minmax(180px, 1fr);
   align-items: center;
-  gap: 12px 22px;
+  gap: 10px 22px;
+  font-size: 12px;
 }
 
 .summary-fields span,
@@ -3801,20 +3806,38 @@ textarea.matrix-input {
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 20px;
+  gap: 18px;
+}
+
+.workflow-detail .matrix-input {
+  min-height: 24px;
+  height: 24px;
+  padding: 0 8px;
+  color: #333;
+  font-size: 12px;
+  line-height: 22px;
+  border-color: #9da3ad;
+  border-radius: 0;
+}
+
+.workflow-detail .matrix-btn {
+  min-height: 28px;
+  height: 28px;
+  border-radius: 2px;
+  font-size: 12px;
 }
 
 .workflow-section {
-  margin-top: 12px;
-  padding: 20px 24px;
+  margin-top: 14px;
+  padding: 24px 92px 24px 52px;
   position: relative;
 }
 
 .flow-basic {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px 56px;
-  padding-right: 78px;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 12px 86px;
+  padding-right: 0;
 }
 
 .flow-basic label,
@@ -3822,43 +3845,45 @@ textarea.matrix-input {
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr);
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  font-size: 12px;
 }
 
 .workflow-card {
   position: relative;
-  margin-top: 16px;
-  padding: 54px 54px 22px 54px;
-  min-height: 164px;
+  margin-top: 18px;
+  padding: 22px 92px 22px 52px;
+  min-height: 156px;
 }
 
 .workflow-section.active-flow,
 .workflow-card.active-flow {
-  border-color: #91caff;
-  box-shadow: inset 3px 0 0 var(--mx-blue);
+  border-color: #9da3ad;
+  box-shadow: none;
 }
 
 .workflow-card.model {
-  min-height: 138px;
+  min-height: 150px;
 }
 
 .workflow-card.manual {
-  min-height: 470px;
-}
-
-.workflow-card.judge-flow {
   min-height: 360px;
 }
 
+.workflow-card.judge-flow {
+  min-height: 560px;
+}
+
 .workflow-card.compact {
-  min-height: 142px;
+  min-height: 170px;
 }
 
 .workflow-form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
   align-items: center;
-  gap: 12px 28px;
+  gap: 10px 26px;
+  max-width: 900px;
 }
 
 .workflow-form-grid .matrix-input {
@@ -3868,17 +3893,17 @@ textarea.matrix-input {
 
 .workflow-card-actions {
   position: absolute;
-  top: 12px;
-  right: 16px;
+  top: 22px;
+  right: 22px;
   display: flex;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 16px;
   z-index: 2;
 }
 
 .workflow-card-actions button {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   color: transparent;
   background: transparent;
   border: 0;
@@ -3891,7 +3916,7 @@ textarea.matrix-input {
 }
 
 .workflow-card-actions button:last-child::before {
-  content: "▥";
+  content: "";
 }
 
 .workflow-card-actions button::before {
@@ -3900,17 +3925,75 @@ textarea.matrix-input {
   display: grid;
   place-items: center;
   color: #111;
-  font-size: 20px;
+  font-size: 18px;
 }
 
+.workflow-card-actions button:last-child::before {
+  top: 8px;
+  left: 7px;
+  width: 10px;
+  height: 12px;
+  border: 2px solid #111;
+  border-top: 0;
+  box-sizing: border-box;
+}
+
+.workflow-card-actions button:last-child::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 14px;
+  height: 2px;
+  background: #111;
+  box-shadow: 4px -3px 0 -1px #111;
+}
+
+.workflow-region-strip,
 .region-selector {
   display: flex;
   align-items: center;
-  gap: 20px;
-  min-height: 34px;
-  padding: 0 14px;
-  background: #fbfcff;
-  border: 1px solid var(--mx-line);
+  gap: 18px;
+  min-height: 28px;
+  padding: 0 12px;
+  background: #f7f7f7;
+  border: 1px solid #b7bdc7;
+  font-size: 12px;
+}
+
+.workflow-region-strip {
+  grid-column: span 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.workflow-region-strip::before,
+.workflow-region-strip::after {
+  content: "";
+  position: absolute;
+  top: -18px;
+  bottom: -18px;
+  width: 1px;
+  background: #9da3ad;
+}
+
+.workflow-region-strip::before {
+  left: 34px;
+  transform: rotate(-82deg);
+}
+
+.workflow-region-strip::after {
+  right: 34px;
+  transform: rotate(82deg);
+}
+
+.workflow-region-strip label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .region-selector label {
@@ -3922,21 +4005,24 @@ textarea.matrix-input {
 
 .score-buttons {
   display: flex;
-  gap: 42px;
+  gap: 52px;
+  justify-content: center;
+  grid-column: span 1;
 }
 
 .score-buttons button {
-  min-width: 100px;
-  height: 34px;
+  min-width: 96px;
+  height: 30px;
   color: #333;
   background: #fff;
   border: 1px solid #b7bdc7;
-  border-radius: 4px;
+  border-radius: 2px;
   font-weight: 700;
 }
 
 .model-pick {
   justify-self: start;
+  min-width: 92px;
 }
 
 .target-tabs span {
@@ -3945,16 +4031,16 @@ textarea.matrix-input {
 }
 
 .target-tabs button {
-  min-width: 72px;
-  height: 28px;
+  min-width: 86px;
+  height: 26px;
   color: var(--mx-blue);
   background: #fff;
   border: 1px solid #b7bdc7;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .region-editor {
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
 .editor-tools {
@@ -4003,7 +4089,7 @@ textarea.matrix-input {
 .image-stage {
   display: grid;
   place-items: center;
-  min-height: 260px;
+  min-height: 250px;
   margin-top: -1px;
   background:
     linear-gradient(15deg, transparent 49.7%, #9ca3af 50%, transparent 50.3%) left top / 50% 100% no-repeat,
@@ -4014,8 +4100,8 @@ textarea.matrix-input {
 
 .image-placeholder {
   position: relative;
-  width: min(56%, 620px);
-  height: 174px;
+  width: min(58%, 620px);
+  height: 160px;
   padding: 14px;
   background: #fff;
   border: 12px solid #d3d3d3;
@@ -4044,14 +4130,16 @@ textarea.matrix-input {
 }
 
 .rules-panel {
-  margin-top: 18px;
-  padding-left: 26px;
-  border-left: 1px solid #b7bdc7;
+  margin-top: 12px;
+  margin-left: 26px;
+  padding: 0 18px 12px;
+  border: 1px solid #b7bdc7;
+  background: #fff;
 }
 
 .rule-group {
   margin-top: 10px;
-  padding: 12px 18px;
+  padding: 10px 18px;
   border: 1px solid #b7bdc7;
 }
 
@@ -4076,10 +4164,10 @@ textarea.matrix-input {
 .size-line {
   display: grid;
   align-items: center;
-  gap: 12px;
-  min-height: 44px;
+  gap: 10px;
+  min-height: 38px;
   margin-top: 8px;
-  padding: 8px 12px;
+  padding: 7px 12px;
   border: 1px solid #d7dce5;
 }
 
@@ -4796,7 +4884,7 @@ textarea.matrix-input {
 }
 
 .workflow-form-grid {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
 }
 
 .matrix-modal footer {
