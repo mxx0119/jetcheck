@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>捷检客户端 - 马斯特场景 Demo</title>
+    <link rel="stylesheet" href="../shared.css" />
+  </head>
+  <body>
+    <div class="client-shell">
+      <header class="client-topbar">
+        <div class="client-logo">Jetcheck 捷检</div>
+        <div class="client-company">
+          <span>浙江一本智能科技有限公司</span>
+          <span class="client-online">● 在线</span>
+          <a class="btn client-top-link" href="../platform/">平台端</a>
+          <button class="gear" id="sync" title="同步平台方案">⚙</button>
+        </div>
+      </header>
+      <aside class="client-side">
+        <nav class="client-nav" id="nav"></nav>
+      </aside>
+      <main class="client-main">
+        <div id="view"></div>
+      </main>
+    </div>
+    <script src="./client.js"></script>
+  </body>
+</html>

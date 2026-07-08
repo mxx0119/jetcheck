@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>捷检 Demo</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: "Microsoft YaHei", Arial, sans-serif;
+        background: #f4f7fb;
+        color: #1f2937;
+      }
+
+      main {
+        width: min(720px, calc(100vw - 48px));
+        padding: 40px;
+        background: #fff;
+        border: 1px solid #e5eaf2;
+        border-radius: 10px;
+        box-shadow: 0 18px 45px rgba(31, 41, 55, 0.08);
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        color: #0052d9;
+      }
+
+      p {
+        margin: 0 0 28px;
+        color: #667085;
+      }
+
+      .links {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      a {
+        display: grid;
+        place-items: center;
+        min-height: 86px;
+        color: #fff;
+        background: #0052d9;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 18px;
+      }
+
+      a.secondary {
+        background: #1f7a32;
+      }
+
+      @media (max-width: 640px) {
+        main {
+          padding: 28px;
+        }
+
+        .links {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Jetcheck 捷检 Demo</h1>
+      <p>请选择要查看的演示端。</p>
+      <div class="links">
+        <a href="./platform/">平台端 Demo</a>
+        <a class="secondary" href="./client/">客户端 Demo</a>
+      </div>
+    </main>
+  </body>
+</html>
