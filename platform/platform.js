@@ -535,7 +535,7 @@ function modelsPage() {
             <thead><tr><th>序号</th><th>模型名称</th><th>场景类型</th><th>训练图像源</th><th>状态</th><th>准确率</th><th>操作</th></tr></thead>
             <tbody>
               ${models.map((model, index) => `
-                <tr><td>${index + 1}</td><td>${model.name}</td><td>${model.scene}</td><td>${model.source}</td><td><span class="state ${statusClass(model.status)}">${model.status}</span></td><td>${model.score}</td><td><button class="link-btn" data-action="openModelVersions" data-index="${index}">训练记录</button><button class="link-btn danger">删除</button></td></tr>
+                <tr><td>${index + 1}</td><td>${model.name}</td><td>${model.scene}</td><td>${model.source}</td><td><span class="state ${statusClass(model.status)}">${model.status}</span></td><td>${model.score}</td><td><button class="link-btn" data-action="openModelVersions" data-index="${index}">训练记录</button><button class="link-btn danger" data-action="deleteModel" data-index="${index}">删除</button></td></tr>
               `).join("")}
             </tbody>
           </table>
@@ -551,7 +551,7 @@ function modelVersionsPage() {
   return pageFrame(model.name, `模型管理 ＞ 快捷模型 ＞ ${model.name}`, `
     <div class="matrix-toolbar">
       <button class="matrix-btn" data-page="models">‹ 返回</button>
-      <div class="actions"><button class="matrix-btn primary">⊕ 新建训练</button></div>
+      <div class="actions"><button class="matrix-btn primary" data-action="createModelTraining">⊕ 新建训练</button></div>
     </div>
     <div class="matrix-table-wrap">
       <table class="matrix-table">
@@ -562,7 +562,7 @@ function modelVersionsPage() {
               <td>${index + 1}</td><td>${item.code}</td><td>${item.create}</td>
               <td><span class="state ${item.status === "训练完成" ? "ok" : "warn"}">${item.status}</span></td>
               <td>${item.done === "-" ? "-" : `完成时间：${item.done}　训练耗时：${item.spend}`}</td>
-              <td><button class="link-btn" data-action="openTrain" data-index="${index}">查看</button><button class="link-btn" data-action="openModelTest" data-index="${index}">测试</button><button class="link-btn">下载</button><button class="link-btn">更多</button></td>
+              <td><button class="link-btn" data-action="openTrain" data-index="${index}">查看</button><button class="link-btn" data-action="openModelTest" data-index="${index}">测试</button><button class="link-btn" data-action="downloadModelVersion" data-index="${index}">下载</button><button class="link-btn" data-action="moreModelVersion" data-index="${index}">更多</button></td>
             </tr>
           `).join("")}
         </tbody>
@@ -574,7 +574,7 @@ function modelVersionsPage() {
 
 function train() {
   return pageFrame("训练", "模型管理 ＞ 快捷模型 ＞ kakou ＞ 训练", `
-    <div class="model-workbench-head"><button class="matrix-btn" data-page="modelVersions">⇱ 退出训练</button><span class="tip">ⓘ 在每张图像上把检测目标标注出来~</span><button class="matrix-btn primary" data-modal="modelSource">关联模型</button><button class="matrix-btn primary" data-modal="upload">添加图像</button><button class="matrix-btn primary">开始训练</button></div>
+    <div class="model-workbench-head"><button class="matrix-btn" data-page="modelVersions">⇱ 退出训练</button><span class="tip">ⓘ 在每张图像上把检测目标标注出来~</span><button class="matrix-btn primary" data-modal="modelSource">关联模型</button><button class="matrix-btn primary" data-modal="upload">添加图像</button><button class="matrix-btn primary" data-action="startTraining">开始训练</button></div>
     ${modelWorkbench(false)}
   `);
 }
@@ -851,6 +851,51 @@ function bind() {
       render();
     });
   });
+  view.querySelectorAll("button").forEach(el => {
+    const handled = ["action", "page", "modal", "close", "field", "tab", "view"].some(key => el.dataset[key] !== undefined);
+    if (handled) return;
+    el.addEventListener("click", event => {
+      event.preventDefault();
+      handlePassiveButton(el);
+    });
+  });
+}
+
+function handlePassiveButton(el) {
+  const text = el.textContent.replace(/\s+/g, " ").trim();
+  if (!text) {
+    toast("操作已触发");
+    return;
+  }
+  if (text.includes("删除")) {
+    toast("删除操作已触发，演示数据未做持久删除");
+    return;
+  }
+  if (text.includes("下载")) {
+    toast("下载任务已创建");
+    return;
+  }
+  if (text.includes("更多")) {
+    toast("更多操作菜单已打开");
+    return;
+  }
+  if (text.includes("选择模型")) {
+    toast("已选择示例模型");
+    return;
+  }
+  if (text.includes("开始训练")) {
+    toast("训练任务已启动");
+    return;
+  }
+  if (text.includes("完成")) {
+    toast("当前图片标注已保存");
+    return;
+  }
+  if (["＋", "⊕", "+", "−", "-", "⊖", "‹", "›", "1", "2"].includes(text)) {
+    toast(`已触发 ${text} 操作`);
+    return;
+  }
+  toast(`${text} 已触发`);
 }
 
 function handleAction(action, el) {
@@ -1024,6 +1069,23 @@ function handleAction(action, el) {
     render();
     return;
   }
+  if (action === "deleteModel") {
+    const model = models[index];
+    if (model) {
+      models.splice(index, 1);
+      state.selectedModelIndex = Math.max(0, Math.min(state.selectedModelIndex, models.length - 1));
+      render();
+      toast(`${model.name} 已删除`);
+    }
+    return;
+  }
+  if (action === "createModelTraining") {
+    modelVersions.unshift({ code: String(Date.now()).slice(-13), create: nowText(), status: "待训练", done: "-", spend: "-" });
+    state.selectedModelVersionIndex = 0;
+    render();
+    toast("新建训练记录成功");
+    return;
+  }
   if (action === "openTrain") {
     state.selectedModelVersionIndex = index;
     state.page = "train";
@@ -1041,6 +1103,26 @@ function handleAction(action, el) {
     state.modelTestProcessed = true;
     render();
     toast("测试批量处理完成");
+    return;
+  }
+  if (action === "downloadModelVersion") {
+    const item = modelVersions[index];
+    toast(item ? `${item.code} 下载任务已创建` : "下载任务已创建");
+    return;
+  }
+  if (action === "moreModelVersion") {
+    toast("已打开训练记录更多操作");
+    return;
+  }
+  if (action === "startTraining") {
+    const item = modelVersions[state.selectedModelVersionIndex] || modelVersions[0];
+    if (item) {
+      item.status = "训练完成";
+      item.done = nowText();
+      item.spend = "2分钟51秒";
+    }
+    render();
+    toast("训练完成，记录状态已更新");
     return;
   }
   if (action === "exportTestResult") {

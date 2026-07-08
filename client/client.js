@@ -932,6 +932,63 @@ function bind() {
       render();
     });
   });
+  view.querySelectorAll("button").forEach(btn => {
+    const handled = ["toolAction", "openTool", "action", "page", "editStep", "processMethod", "sourceType", "dropdown", "mode", "select", "usePlan", "deletePlan", "close"].some(key => btn.dataset[key] !== undefined) || btn.id;
+    if (handled) return;
+    btn.addEventListener("click", event => {
+      event.preventDefault();
+      handlePassiveButton(btn);
+    });
+  });
+}
+
+function handlePassiveButton(btn) {
+  const text = btn.textContent.replace(/\s+/g, " ").trim();
+  if (!text) {
+    toast("操作已触发");
+    return;
+  }
+  if (text.includes("删除") || text === "▥") {
+    toast("删除操作已触发，演示数据未做持久删除");
+    return;
+  }
+  if (text.includes("添加")) {
+    toast("添加操作已完成");
+    return;
+  }
+  if (text.includes("清空")) {
+    state.detected = false;
+    render();
+    toast("图像列表已清空");
+    return;
+  }
+  if (text.includes("重置") || text.includes("恢复默认")) {
+    state.detected = false;
+    render();
+    toast("已恢复默认状态");
+    return;
+  }
+  if (text.includes("选择模型")) {
+    toast("已选择示例模型");
+    return;
+  }
+  if (text.includes("本地上传") || text.includes("示例图像获取")) {
+    toast("示例图像已获取");
+    return;
+  }
+  if (text.includes("查看相机画面")) {
+    toast("已打开相机画面预览");
+    return;
+  }
+  if (text.includes("查询")) {
+    toast("查询完成");
+    return;
+  }
+  if (["−", "＋", "4等分", "9等分", "16等分"].includes(text)) {
+    toast(`${text} 操作已应用`);
+    return;
+  }
+  toast(`${text} 已触发`);
 }
 
 function toast(message) {
