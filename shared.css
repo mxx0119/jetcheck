@@ -3891,6 +3891,18 @@ textarea.matrix-input {
   min-width: 0;
 }
 
+.workflow-inline-field {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.workflow-inline-field > span {
+  color: #333;
+}
+
 .workflow-card-actions {
   position: absolute;
   top: 22px;
@@ -3949,7 +3961,6 @@ textarea.matrix-input {
   box-shadow: 4px -3px 0 -1px #111;
 }
 
-.workflow-region-strip,
 .region-selector {
   display: flex;
   align-items: center;
@@ -3959,41 +3970,6 @@ textarea.matrix-input {
   background: #f7f7f7;
   border: 1px solid #b7bdc7;
   font-size: 12px;
-}
-
-.workflow-region-strip {
-  grid-column: span 1;
-  position: relative;
-  overflow: hidden;
-}
-
-.workflow-region-strip::before,
-.workflow-region-strip::after {
-  content: "";
-  position: absolute;
-  top: -18px;
-  bottom: -18px;
-  width: 1px;
-  background: #9da3ad;
-}
-
-.workflow-region-strip::before {
-  left: 34px;
-  transform: rotate(-82deg);
-}
-
-.workflow-region-strip::after {
-  right: 34px;
-  transform: rotate(82deg);
-}
-
-.workflow-region-strip label {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
 }
 
 .region-selector label {
@@ -4021,8 +3997,15 @@ textarea.matrix-input {
 }
 
 .model-pick {
-  justify-self: start;
+  justify-self: stretch;
   min-width: 92px;
+}
+
+.target-tabs {
+  display: grid !important;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
 }
 
 .target-tabs span {

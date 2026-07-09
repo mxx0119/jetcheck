@@ -26,8 +26,8 @@ const state = {
   cropRect: null,
   cropApplied: false,
   workflowFlows: [
-    { id: 1, type: "instance", name: "图像获取实例", input: "客户端上传" },
-    { id: 2, type: "process", name: "X光图像处理", method: "手动绘制检测区域", prev: 1 },
+    { id: 1, type: "instance", name: "图像获取实例", input: "图片/图片集" },
+    { id: 2, type: "process", name: "X光图像处理", method: "手绘检测区域", prev: 1 },
     { id: 3, type: "detect", name: "检测", prev: 2 },
     { id: 4, type: "judge", name: "规则判断", prev: 3 }
   ],
@@ -322,21 +322,27 @@ function workflowDesigner() {
   `;
 }
 
-function flowOptions(type) {
+function flowOptions(type, selectedId) {
   const list = state.workflowFlows.filter(flow => flow.type === type);
-  return list.map(flow => `<option>${flow.name}</option>`).join("") || `<option>暂无可选前置流程</option>`;
+  return list.map(flow => `<option value="${flow.id}" ${flow.id === selectedId ? "selected" : ""}>${flow.name}</option>`).join("") || `<option>暂无可选前置流程</option>`;
 }
 
-function workflowRegionStrip() {
+function modelPickerRow(model = "X光缺陷初筛模型") {
   return `
-    <div class="workflow-region-strip">
-      <label><input type="radio" checked />关联</label>
-      <label><input type="checkbox" />全选</label>
-      <label><input type="checkbox" />区域A</label>
-      <label><input type="checkbox" />区域B</label>
-      <label><input type="checkbox" />区域C</label>
+    <div class="workflow-inline-field model-row">
+      <span>模型</span>
+      <select class="matrix-input">
+        <option>${model}</option>
+        <option>加热复核分类模型</option>
+        <option>漏检补充判定模型</option>
+      </select>
+      <button class="matrix-btn model-pick">选择模型</button>
     </div>
   `;
+}
+
+function selectButtons(title, options) {
+  return `<label class="target-tabs">${title}<span>${options.map(item => `<button>${item}</button>`).join("")}</span></label>`;
 }
 
 function workflowFlowCard(flow) {
@@ -346,7 +352,7 @@ function workflowFlowCard(flow) {
       <div class="flow-basic">
         <label>流程名称<input class="matrix-input" value="${flow.name}" /></label>
         <label>实例名称<input class="matrix-input" value="X光检测" /></label>
-        <label>实例采集方式<select class="matrix-input"><option>${flow.input}</option><option>图像库选择</option><option>接口</option><option>相机</option></select></label>
+        <label>实例采集方式<select class="matrix-input" data-flow-field="input" data-index="${flow.id}"><option ${flow.input === "图片/图片集" ? "selected" : ""}>图片/图片集</option><option ${flow.input === "相机" ? "selected" : ""}>相机</option><option ${flow.input === "接口" ? "selected" : ""}>接口</option></select></label>
       </div>
     </section>
   `;
@@ -356,19 +362,20 @@ function workflowFlowCard(flow) {
 }
 
 function processFlowCard(flow) {
-  const isManual = flow.method === "手动绘制检测区域";
+  const method = flow.method || "手绘检测区域";
+  const isManual = method === "手绘检测区域";
+  const isModel = method === "模型处理图像";
   const hasInstancePrev = state.workflowFlows.some(item => item.type === "instance");
   return `
-    <section class="workflow-card active-flow ${isManual ? "manual" : "model"}" data-flow-id="${flow.id}">
+    <section class="workflow-card active-flow ${isManual ? "manual" : isModel ? "model" : "full"}" data-flow-id="${flow.id}">
       <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
       <div class="workflow-form-grid">
         <label>处理流程名称<input class="matrix-input" value="${flow.name}" /></label>
-        <label>前置流程<select class="matrix-input">${flowOptions("instance")}</select></label>
+        <label>前置流程<select class="matrix-input" data-flow-field="prev" data-index="${flow.id}">${flowOptions("instance", flow.prev)}</select></label>
         ${hasInstancePrev ? `<label>选择图像实例<select class="matrix-input"><option>X光检测</option><option>客户端上传实例</option></select></label>` : ""}
-        ${workflowRegionStrip()}
+        <label>处理方式<select class="matrix-input" data-flow-field="method" data-index="${flow.id}"><option ${method === "全图处理" ? "selected" : ""}>全图处理</option><option ${method === "手绘检测区域" ? "selected" : ""}>手绘检测区域</option><option ${method === "模型处理图像" ? "selected" : ""}>模型处理图像</option></select></label>
         ${isManual ? `<div class="score-buttons"><button>4等分</button><button>6等分</button><button>8等分</button></div>` : ""}
-        <label>处理方式<select class="matrix-input" data-action="toggleProcessMethod" data-index="${flow.id}"><option>${flow.method}</option><option>${isManual ? "模型识别检测区域" : "手动绘制检测区域"}</option></select></label>
-        ${!isManual ? `<label>模型<input class="matrix-input" placeholder="请选择模型" /></label><button class="matrix-btn model-pick">选择模型</button>` : ""}
+        ${isModel ? modelPickerRow("ROI区域识别模型") : ""}
       </div>
       ${isManual ? workflowCanvas() : ""}
     </section>
@@ -381,11 +388,9 @@ function detectFlowCard(flow) {
       <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
       <div class="workflow-form-grid">
         <label>检测项名称<input class="matrix-input" value="${flow.name}" /></label>
-        <label>前置流程<select class="matrix-input">${flowOptions("process")}</select></label>
-        ${workflowRegionStrip()}
-        <label class="target-tabs">选择检测对象<span><button>对象A</button><button>对象B</button></span></label>
-        <label>模型<input class="matrix-input" placeholder="请选择模型" /></label>
-        <button class="matrix-btn model-pick">选择模型</button>
+        <label>前置流程<select class="matrix-input" data-flow-field="prev" data-index="${flow.id}">${flowOptions("process", flow.prev)}</select></label>
+        ${selectButtons("选择检测对象", ["处理图像A", "处理图像B"])}
+        ${modelPickerRow("X光缺陷初筛模型")}
       </div>
     </section>
   `;
@@ -397,9 +402,8 @@ function judgeFlowCard(flow) {
       <div class="workflow-card-actions"><button>编辑</button><button data-action="deleteFlow" data-index="${flow.id}">删除</button></div>
       <div class="workflow-form-grid">
         <label>判断流程名称<input class="matrix-input" value="${flow.name}" /></label>
-        <label>前置流程<select class="matrix-input">${flowOptions("detect")}</select></label>
-        ${workflowRegionStrip()}
-        <label class="target-tabs">检测项<span><button>检测项A</button><button>检测项B</button></span></label>
+        <label>前置流程<select class="matrix-input" data-flow-field="prev" data-index="${flow.id}">${flowOptions("detect", flow.prev)}</select></label>
+        ${selectButtons("选择检测项", ["检测项A", "检测项B"])}
       </div>
 
       <div class="rules-panel">
@@ -829,6 +833,15 @@ function bind() {
       render();
     });
   });
+  view.querySelectorAll("[data-flow-field]").forEach(el => {
+    el.addEventListener("change", () => {
+      const flow = state.workflowFlows.find(item => item.id === Number(el.dataset.index));
+      if (!flow) return;
+      const value = el.dataset.flowField === "prev" ? Number(el.value) : el.value;
+      flow[el.dataset.flowField] = value;
+      render();
+    });
+  });
   view.querySelectorAll("[data-page]").forEach(el => {
     el.addEventListener("click", () => {
       state.page = el.dataset.page;
@@ -1052,8 +1065,9 @@ function handleAction(action, el) {
       id: nextId,
       type,
       name: `${names[type]}${nextId}`,
-      input: "客户端上传",
-      method: type === "process" ? "手动绘制检测区域" : undefined
+      input: "图片/图片集",
+      method: type === "process" ? "手绘检测区域" : undefined,
+      prev: requiredPrev ? (state.workflowFlows.find(flow => flow.type === requiredPrev) || {}).id : undefined
     });
     state.modal = "";
     render();
@@ -1074,7 +1088,11 @@ function handleAction(action, el) {
   }
   if (action === "toggleProcessMethod") {
     const flow = state.workflowFlows.find(item => item.id === index);
-    if (flow) flow.method = flow.method === "手动绘制检测区域" ? "模型识别检测区域" : "手动绘制检测区域";
+    if (flow) {
+      const methods = ["全图处理", "手绘检测区域", "模型处理图像"];
+      const current = methods.indexOf(flow.method);
+      flow.method = methods[(current + 1) % methods.length];
+    }
     render();
     return;
   }
