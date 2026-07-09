@@ -21,10 +21,15 @@ const state = {
   selectedImageIndex: 0,
   selectedModelIndex: 0,
   selectedModelVersionIndex: 0,
+  modelKeyword: "",
+  modelScene: "全部场景类型",
   modelTestProcessed: false,
   cropMode: false,
   cropRect: null,
   cropApplied: false,
+  clientKeyword: "",
+  clientStatus: "全部状态",
+  companyMenuOpen: false,
   workflowFlows: [
     { id: 1, type: "instance", name: "图像获取实例", input: "图片/图片集" },
     { id: 2, type: "process", name: "X光图像处理", method: "手绘检测区域", prev: 1 },
@@ -56,9 +61,15 @@ const imageFolders = [
 ];
 
 const models = [
-  { name: "X光缺陷初筛模型", scene: "缺陷检测", source: "ROI裁图_初筛训练集", status: "已验证", score: "98.6%" },
-  { name: "加热复核分类模型", scene: "分类", source: "初筛模型输出", status: "训练中", score: "92.4%" },
-  { name: "漏检补充判定模型", scene: "缺陷检测", source: "待回流_漏检样本", status: "待训练", score: "-" }
+  { name: "X光缺陷初筛模型", scene: "缺陷检测", source: "ROI裁图_初筛训练集", status: "已验证", score: "98.6%", desc: "马斯特来料 X 光缺陷检测" },
+  { name: "加热复核分类模型", scene: "分类", source: "初筛模型输出", status: "训练中", score: "92.4%", desc: "初筛 NG 后复核分类" },
+  { name: "漏检补充判定模型", scene: "缺陷检测", source: "待回流_漏检样本", status: "待训练", score: "-", desc: "漏检样本补充训练" }
+];
+
+const clientsData = [
+  { name: "辊轧件", hardware: "f174c50da2b48f85b0b791b2856825ff21fbc6b54a3697bbf7f0bc696ea53514", bind: "2026-05-11 16:17:47", status: "离线", offline: "2026-06-09 13:38:51", plan: "MST-XRAY V1.4.2", sync: "已同步" },
+  { name: "客户A03", hardware: "9c5b6c20d4e64a198b7c-demo-client-a03", bind: "2026-07-03 08:12:00", status: "在线", offline: "-", plan: "MST-XRAY V1.4.2", sync: "已同步" },
+  { name: "供应商复检线", hardware: "7d2b8f91c3e047a6-demo-recheck-line", bind: "2026-06-28 13:40:00", status: "离线", offline: "2026-07-02 18:20:11", plan: "MST-HEAT V1.2.0", sync: "待同步" }
 ];
 
 const modelVersions = [
@@ -71,7 +82,7 @@ const modelVersions = [
 
 function statusClass(status) {
   if (["已发布", "已验证", "在线", "已入库", "已归档"].includes(status)) return "ok";
-  if (["待发布", "训练中", "待回流", "待复核"].includes(status)) return "warn";
+  if (["待发布", "训练中", "待回流", "待复核", "待同步", "离线"].includes(status)) return "warn";
   return "bad";
 }
 
@@ -113,15 +124,46 @@ function visibleVersions() {
   });
 }
 
+function visibleModels() {
+  return models.filter(item => {
+    const keywordHit = !state.modelKeyword || item.name.includes(state.modelKeyword) || item.scene.includes(state.modelKeyword) || item.source.includes(state.modelKeyword);
+    const sceneHit = state.modelScene === "全部场景类型" || item.scene === state.modelScene;
+    return keywordHit && sceneHit;
+  });
+}
+
+function visibleClients() {
+  return clientsData.filter(item => {
+    const keywordHit = !state.clientKeyword || item.name.includes(state.clientKeyword) || item.hardware.includes(state.clientKeyword);
+    const statusHit = state.clientStatus === "全部状态" || item.status === state.clientStatus;
+    return keywordHit && statusHit;
+  });
+}
+
 function renderShell() {
   nav.innerHTML = menus.map(item => `
     <button class="${state.page === item.id ? "active" : ""}" data-page="${item.id}">${item.title}</button>
   `).join("");
 
+  const user = document.querySelector(".matrix-user");
+  if (user) {
+    user.innerHTML = `
+      <button class="company-trigger" data-action="toggleCompanyMenu">我的企业</button>
+      ${state.companyMenuOpen ? `<div class="company-menu"><strong>浙江一木智能科技有限公司</strong><button data-action="logout">退出账号</button></div>` : ""}
+    `;
+    user.querySelectorAll("[data-action]").forEach(el => {
+      el.addEventListener("click", event => {
+        event.stopPropagation();
+        handleAction(el.dataset.action, el);
+      });
+    });
+  }
+
   nav.querySelectorAll("[data-page]").forEach(btn => {
     btn.addEventListener("click", () => {
       state.page = btn.dataset.page;
       if (state.page !== "images") state.selectedFolderIndex = null;
+      state.companyMenuOpen = false;
       render();
     });
   });
@@ -530,6 +572,22 @@ function imageFolderDetail() {
 }
 
 function modelsPage() {
+  const rows = visibleModels().map((model, index) => {
+    const realIndex = models.indexOf(model);
+    return `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${model.name}</td>
+        <td>${model.scene}</td>
+        <td>${model.desc || ""}</td>
+        <td>${model.source}</td>
+        <td><span class="state ${statusClass(model.status)}">${model.status}</span></td>
+        <td>${model.score}</td>
+        <td><button class="link-btn" data-action="openModelVersions" data-index="${realIndex}">训练记录</button><button class="link-btn" data-action="editModel" data-index="${realIndex}">编辑</button><button class="link-btn danger" data-action="deleteModel" data-index="${realIndex}">删除</button></td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="8">暂无匹配模型</td></tr>`;
+
   return pageFrame("模型管理", "首页 / 模型管理 / 快捷模型", `
     <div class="model-layout-matrix">
       <aside class="matrix-submenu">
@@ -540,26 +598,22 @@ function modelsPage() {
       <main>
         <div class="matrix-toolbar">
           <div class="filters">
-            <select class="matrix-input"><option>全部场景类型</option><option>缺陷检测</option><option>分类</option></select>
-            <input class="matrix-input" placeholder="请输入模型名称" />
+            <select class="matrix-input" data-field="modelScene">${["全部场景类型", "缺陷检测", "分类", "尺寸检测"].map(item => `<option ${state.modelScene === item ? "selected" : ""}>${item}</option>`).join("")}</select>
+            <input class="matrix-input" data-field="modelKeyword" placeholder="请输入模型名称" value="${state.modelKeyword}" />
           </div>
           <div class="actions">
-            <button class="matrix-btn">重置</button>
-            <button class="matrix-btn primary">查询</button>
+            <button class="matrix-btn" data-action="resetModels">重置</button>
+            <button class="matrix-btn primary" data-action="queryModels">查询</button>
             <button class="matrix-btn primary" data-modal="model">新建模型</button>
           </div>
         </div>
         <div class="matrix-table-wrap">
           <table class="matrix-table">
-            <thead><tr><th>序号</th><th>模型名称</th><th>场景类型</th><th>训练图像源</th><th>状态</th><th>准确率</th><th>操作</th></tr></thead>
-            <tbody>
-              ${models.map((model, index) => `
-                <tr><td>${index + 1}</td><td>${model.name}</td><td>${model.scene}</td><td>${model.source}</td><td><span class="state ${statusClass(model.status)}">${model.status}</span></td><td>${model.score}</td><td><button class="link-btn" data-action="openModelVersions" data-index="${index}">训练记录</button><button class="link-btn danger" data-action="deleteModel" data-index="${index}">删除</button></td></tr>
-              `).join("")}
-            </tbody>
+            <thead><tr><th>序号</th><th>模型名称</th><th>场景类型</th><th>场景描述</th><th>训练图像源</th><th>状态</th><th>准确率</th><th>操作</th></tr></thead>
+            <tbody>${rows}</tbody>
           </table>
         </div>
-        ${pagination()}
+        ${pagination(visibleModels().length)}
       </main>
     </div>
   `);
@@ -635,18 +689,39 @@ function modelWorkbench(withResult) {
 
 
 function clients() {
+  const rows = visibleClients().map(client => `
+    <tr>
+      <td>${client.name}</td>
+      <td class="hardware-cell">${client.hardware}</td>
+      <td>${client.bind}</td>
+      <td><span class="state ${statusClass(client.status)}">${client.status}</span></td>
+      <td>${client.offline}</td>
+      <td>${client.plan}</td>
+      <td><span class="state ${statusClass(client.sync)}">${client.sync}</span></td>
+      <td><button class="link-btn">同步方案</button><button class="link-btn">查看记录</button></td>
+    </tr>
+  `).join("") || `<tr><td colspan="8">暂无匹配客户端</td></tr>`;
+
   return pageFrame("客户端管理", "首页 / 客户端管理", `
+    <div class="matrix-toolbar">
+      <div class="client-quota">客户端配额：<b>${clientsData.length}</b><span>/</span><strong>${clientsData.length}</strong></div>
+      <div class="filters">
+        <select class="matrix-input" data-field="clientStatus">${["全部状态", "在线", "离线"].map(item => `<option ${state.clientStatus === item ? "selected" : ""}>${item}</option>`).join("")}</select>
+        <input class="matrix-input wide" data-field="clientKeyword" placeholder="请输入客户端名称或硬件识别码" value="${state.clientKeyword}" />
+      </div>
+      <div class="actions">
+        <button class="matrix-btn" data-action="resetClients">重置</button>
+        <button class="matrix-btn primary" data-action="queryClients">查询</button>
+      </div>
+    </div>
     <div class="matrix-table-wrap">
       <table class="matrix-table">
-        <thead><tr><th>终端名称</th><th>绑定时间</th><th>当前方案</th><th>同步状态</th><th>在线状态</th><th>操作</th></tr></thead>
-        <tbody>
-          <tr><td>客户A03</td><td>2026-07-03 08:12</td><td>MST-XRAY V1.4.2</td><td><span class="state ok">已同步</span></td><td><span class="state ok">在线</span></td><td><button class="link-btn">同步方案</button><button class="link-btn">查看记录</button></td></tr>
-          <tr><td>xxma</td><td>2026-06-22 15:19</td><td>MST-XRAY V1.3.8</td><td><span class="state warn">待同步</span></td><td><span class="state warn">离线</span></td><td><button class="link-btn">同步方案</button></td></tr>
-          <tr><td>供应商复检线</td><td>2026-06-28 13:40</td><td>MST-HEAT V1.2.0</td><td><span class="state ok">已同步</span></td><td><span class="state warn">离线</span></td><td><button class="link-btn">查看记录</button></td></tr>
-        </tbody>
+        <thead><tr><th>客户端名称</th><th>硬件识别码</th><th>绑定时间</th><th>客户端状态</th><th>最近离线时间</th><th>当前方案</th><th>同步状态</th><th>操作</th></tr></thead>
+        <tbody>${rows}</tbody>
       </table>
     </div>
-  `, `<button class="matrix-btn primary">绑定终端</button>`);
+    ${pagination(visibleClients().length)}
+  `);
 }
 
 function pagination(total = 15) {
@@ -671,6 +746,7 @@ function modal() {
     crop: "ROI 裁图",
     imageDetail: "图片详情",
     model: "新建模型",
+    modelEdit: "编辑模型",
     modelSource: "选择训练图像源"
   };
 
@@ -760,10 +836,21 @@ function modal() {
     <label class="check-line"><input type="checkbox" /> 保存至图像库</label>
     <p class="modal-note">可关联已完成模型的标签类别或处理结果图片，导入后作为当前模型训练数据。</p>
   ` : state.modal === "model" ? `
-    <label>模型名称<input id="modelName" class="matrix-input" value="马斯特新建检测模型" /></label>
-    <label>场景类型<select id="modelScene" class="matrix-input"><option>缺陷检测</option><option>分类</option><option>尺寸检测</option></select></label>
-    <label>训练图像源<input id="modelSourceInput" class="matrix-input" value="ROI裁图_初筛训练集" /></label>
-    <label>描述<textarea id="modelDesc" class="matrix-input" rows="4">用于马斯特场景的新建模型。</textarea></label>
+    <div class="model-create-flow">
+      <p class="modal-note">选择你需要的场景，填写模型信息后即可在列表中创建一行模型。</p>
+      <div class="model-scene-picker">
+        <label><input type="radio" name="modelCreateScene" value="缺陷检测" checked /><strong>缺陷检测</strong><span>能识别出目标区域中已定义的缺陷</span></label>
+        <label><input type="radio" name="modelCreateScene" value="分类" /><strong>分类</strong><span>能识别出目标区域中已定义目标的类别</span></label>
+      </div>
+      <label>模型名称<input id="modelName" class="matrix-input" placeholder="请输入模型名称" value="马斯特新建检测模型" /></label>
+      <label>训练图像源<input id="modelSourceInput" class="matrix-input" value="ROI裁图_初筛训练集" /></label>
+      <label>场景描述<textarea id="modelDesc" class="matrix-input" rows="4">用于马斯特场景的新建模型。</textarea></label>
+    </div>
+  ` : state.modal === "modelEdit" ? `
+    <label>模型名称<input id="modelName" class="matrix-input" value="${models[state.selectedModelIndex]?.name || ""}" /></label>
+    <label>场景类型<select id="modelScene" class="matrix-input">${["缺陷检测", "分类", "尺寸检测"].map(item => `<option ${models[state.selectedModelIndex]?.scene === item ? "selected" : ""}>${item}</option>`).join("")}</select></label>
+    <label>训练图像源<input id="modelSourceInput" class="matrix-input" value="${models[state.selectedModelIndex]?.source || ""}" /></label>
+    <label>场景描述<textarea id="modelDesc" class="matrix-input" rows="4">${models[state.selectedModelIndex]?.desc || ""}</textarea></label>
   ` : state.modal === "schemeCreate" ? `
     <label>方案名称<input class="matrix-input" value="马斯特新检测方案" /></label>
     <label>方案描述<textarea class="matrix-input" rows="4">用于马斯特场景的新增检测方案，可继续进入详情配置版本。</textarea></label>
@@ -799,6 +886,7 @@ function modal() {
   if (state.modal === "folder") confirmAction = "confirmCreateFolder";
   if (state.modal === "folderEdit") confirmAction = "confirmEditFolder";
   if (state.modal === "model") confirmAction = "confirmCreateModel";
+  if (state.modal === "modelEdit") confirmAction = "confirmEditModel";
   if (state.modal === "upload") confirmAction = "confirmUploadSelect";
   if (state.modal === "uploadProcess") confirmAction = "confirmUploadProcess";
   if (state.modal === "deleteScheme" || state.modal === "deleteVersion") {
@@ -986,13 +1074,27 @@ function handleAction(action, el) {
   }
   if (action === "confirmCreateModel") {
     const name = document.querySelector("#modelName")?.value.trim() || "马斯特新建检测模型";
-    const scene = document.querySelector("#modelScene")?.value || "缺陷检测";
+    const scene = document.querySelector("input[name='modelCreateScene']:checked")?.value || "缺陷检测";
     const source = document.querySelector("#modelSourceInput")?.value.trim() || "ROI裁图_初筛训练集";
-    models.unshift({ name, scene, source, status: "待训练", score: "-" });
+    const desc = document.querySelector("#modelDesc")?.value.trim() || "";
+    models.unshift({ name, scene, source, desc, status: "待训练", score: "-" });
     state.selectedModelIndex = 0;
     state.modal = "";
     render();
     toast("新建模型成功");
+    return;
+  }
+  if (action === "confirmEditModel") {
+    const model = models[state.selectedModelIndex];
+    if (model) {
+      model.name = document.querySelector("#modelName")?.value.trim() || model.name;
+      model.scene = document.querySelector("#modelScene")?.value || model.scene;
+      model.source = document.querySelector("#modelSourceInput")?.value.trim() || model.source;
+      model.desc = document.querySelector("#modelDesc")?.value.trim() || model.desc;
+    }
+    state.modal = "";
+    render();
+    toast("模型已更新");
     return;
   }
   if (action === "confirmUploadSelect") {
@@ -1102,6 +1204,12 @@ function handleAction(action, el) {
     render();
     return;
   }
+  if (action === "editModel") {
+    state.selectedModelIndex = index;
+    state.modal = "modelEdit";
+    render();
+    return;
+  }
   if (action === "deleteModel") {
     const model = models[index];
     if (model) {
@@ -1110,6 +1218,18 @@ function handleAction(action, el) {
       render();
       toast(`${model.name} 已删除`);
     }
+    return;
+  }
+  if (action === "resetModels") {
+    state.modelKeyword = "";
+    state.modelScene = "全部场景类型";
+    render();
+    toast("模型筛选条件已重置");
+    return;
+  }
+  if (action === "queryModels") {
+    render();
+    toast(`查询到 ${visibleModels().length} 条模型`);
     return;
   }
   if (action === "createModelTraining") {
@@ -1164,6 +1284,29 @@ function handleAction(action, el) {
   }
   if (action === "saveTestToLibrary") {
     toast(state.modelTestProcessed ? "测试图片已保存至图像库" : "请先点击批量处理完成测试");
+    return;
+  }
+  if (action === "resetClients") {
+    state.clientKeyword = "";
+    state.clientStatus = "全部状态";
+    render();
+    toast("客户端筛选条件已重置");
+    return;
+  }
+  if (action === "queryClients") {
+    render();
+    toast(`查询到 ${visibleClients().length} 条客户端`);
+    return;
+  }
+  if (action === "toggleCompanyMenu") {
+    state.companyMenuOpen = !state.companyMenuOpen;
+    render();
+    return;
+  }
+  if (action === "logout") {
+    state.companyMenuOpen = false;
+    render();
+    toast("已退出账号，Demo 保留在当前页面");
     return;
   }
 
